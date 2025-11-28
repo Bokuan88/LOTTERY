@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>2025大樂透機率推測器（正規6碼＋特別號全納入）</title>
+<style>
+  body { font-family: "Microsoft JhengHei",sans-serif; margin:0; background:linear-gradient(135deg,#11998e,#38ef7d); min-height:100vh; }
+  .container { max-width:1150px; margin:30px auto; background:white; border-radius:15px; box-shadow:0 15px 35px rgba(0,0,0,0.3); overflow:hidden; }
+  header { background:#1abc9c; color:white; padding:25px; text-align:center; }
+  .tab button { padding:15px 25px; font-size:17px; }
+  .tab button.active { background:#16a085; }
+  .upload-area { border:4px dashed #1abc9c; padding:50px; font-size:20px; }
+  .upload-area:hover { background:#e8f9f6; }
+  table { font-size:15px; }
+  th { background:#16a085; }
+  .hot { background:#e74c3c !important; color:white; font-weight:bold; }
+  .warm { background:#e67e22; color:white; }
+  .cold { background:#3498db !important; color:white; }
+  .ice { background:#9b59b6; color:white; }
+  .spec { background:#f1c40f; color:#2c3e50; font-weight:bold; } /* 最近一期特別號標記 */
+  .set { display:inline-block; margin:12px; padding:18px; background:linear-gradient(45deg,#a8edea,#fed6e3); border-radius:15px; min-width:300px; box-shadow:0 5px 15px rgba(0,0,0,0.1); }
+  button.run { background:#e74c3c; font-size:19px; padding:15px 40px; }
+  button.run:hover { background:#c0392b; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>2025 大樂透機率推測器<br><small>正規6碼 + 特別號 全部納入統計（1-49）</small></h1>
+  </header>
+
+  <div class="tab">
+    <button class="tablinks active" onclick="openTab(event,'manual')">手動輸入</button>
+    <button class="tablinks" onclick="openTab(event,'upload')">上傳 CSV</button>
+  </div>
+
+  <div id="manual" class="tabcontent" style="display:block;padding:30px;">
+    <p>每行一期：前面6個號碼 + 最後一個特別號，用空格或逗號分隔<br>
+       範例：6 9 15 29 30 48 23</p>
+    <textarea id="manualData" placeholder="貼這裡，一行一期..." style="width:100%;height:200px;font-size:16px;padding:15px;"></textarea><br><br>
+    <button class="run" onclick="analyzeFromManual()">開始分析（含特別號）</button>
+  </div>
+
+  <div id="upload" class="tabcontent" style="padding:30px;">
+    <p>直接拖曳或選擇你的「大樂透_2025.csv」</p>
+    <div id="dropArea" class="upload-area">點擊或拖曳 CSV 檔案到這裡</div>
+    <input type="file" id="csvFile" accept=".csv" style="display:none;">
+    <div id="fileName" style="margin:15px 0;font-weight:bold;color:#16a085;"></div>
+    <button class="run" onclick="analyzeFromFile()" id="runBtn" disabled>開始分析（含特別號）</button>
+  </div>
+
+  <div id="result" style="padding:30px;"></div>
+  <div id="recommend" style="padding:30px;text-align:center;"></div>
+</div>
+
+<script>
+function openTab(evt, tabName) {
+  document.querySelectorAll(".tabcontent").forEach(t=>t.style.display="none");
+  document.querySelectorAll(".tablinks").forEach(b=>b.className=b.className.replace(" active",""));
+  document.getElementById(tabName).style.display="block";
+  evt.currentTarget.className += " active";
+}
+
+// 上傳功能
+let csvText = "";
+const dropArea = document.getElementById('dropArea');
+const fileInput = document.getElementById('csvFile');
+
+dropArea.onclick = () => fileInput.click();
+fileInput.onchange = e => handleFile(e.target.files[0]);
+dropArea.ondragover = e => {e.preventDefault(); dropArea.style.background="#d5f4e6";};
+dropArea.ondragleave = () => dropArea.style.background="";
+dropArea.ondrop = e => {e.preventDefault(); dropArea.style.background=""; handleFile(e.dataTransfer.files[0]);};
+
+function handleFile(file) {
+  if (!file || !file.name.endsWith('.csv')) return alert("請選擇 CSV 檔");
+  document.getElementById('fileName').textContent = "已載入：" + file.name;
+  const reader = new FileReader();
+  reader.onload = e => { csvText = e.target.result; document.getElementById('runBtn').disabled = false; };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function analyzeFromFile() { if(csvText) parseAndAnalyze(csvText); }
+function analyzeFromManual() { parseAndAnalyze(document.getElementById("manualData").value); }
+
+// 主要分析引擎（正規6碼 + 特別號 全算進去！）
+function parseAndAnalyze(input) {
+  const lines = input.trim().split('\n').map(l => l.trim()).filter(l => l);
+  const allBalls = [];        // 每期出現的 7 顆球（6+特別號）
+  let latestSpecial = null;   // 最近一期的特別號，用來特別標記
+
+  if (input.includes('特別號') || input.includes('獎號1')) { // CSV 模式
+    const cols = lines[0].split(',');
+    const idx6 = cols.findIndex(c => c.includes('獎號6') || c.includes('獎號６'));
+    const idxSpec = cols.findIndex(c => c.includes('特別號'));
+    for (let i = 1; i < lines.length; i++) {
+      const c = lines[i].split(',');
+      const six = [];
+      for (let j=1; j<=6; j++) {
+        const val = parseInt(c[idx6 -5 + j] || c[j+6]); // 防欄位順序不同
+        if (val >=1 && val <=49) six.push(val);
+      }
+      const spec = parseInt(c[idxSpec]);
+      if (six.length === 6 && spec >=1 && spec <=49) {
+        allBalls.push([...six, spec]);
+        latestSpecial = spec;
+      }
+    }
+  } else { // 手動模式：每行 7 個數字，最後一個是特別號
+    lines.forEach(line => {
+      const arr = line.split(/[\s,，]+/).map(Number).filter(n => n>=1&&n<=49);
+      if (arr.length >= 7) {
+        allBalls.push(arr.slice(0,7));
+        latestSpecial = arr[6];
+      } else if (arr.length === 7) { // 剛好7個
+        allBalls.push(arr);
+        latestSpecial = arr[6];
+      }
+    });
+  }
+
+  if (allBalls.length === 0) return alert("無法解析到任何有效期數，請檢查格式");
+
+  const totalDraws = allBalls.length;
+  const freq = Array(50).fill(0);
+  allBalls.forEach(set => set.forEach(n => freq[n]++));
+
+  // 拉普拉斯平滑（每期7顆球）
+  const laplace = 1;
+  const probNext = freq.map((c,i) => i===0 ? 0 : (c + laplace)/(totalDraws*7 + 49*laplace));
+
+  // 表格
+  let table = `<div style="overflow-x:auto;"><table><h2>共 ${totalDraws} 期・每期7顆球全納入統計（含特別號）</h2>
+               <p>最近一期特別號：<span style="font-size:24px;color:#f1c40f;font-weight:bold;">${latestSpecial}</span></p>
+               <table><tr>
+               <th>號碼</th><th>總出現次數<br>(含特別號)</th><th>出現率</th><th>下期出現機率<br>(正規+特別號)</th>
+               </tr>`;
+  const avg = totalDraws * 7 / 49;
+  for (let i=1; i<=49; i++) {
+    const rate = (freq[i]/(totalDraws*7)*100).toFixed(2);
+    const p = (probNext[i]*100).toFixed(2);
+    let cls = '';
+    if (freq[i] >= avg*1.5) cls='hot';
+    else if (freq[i] >= avg*1.15) cls='warm';
+    else if (freq[i] <= avg*0.6) cls='cold';
+    else if (freq[i] <= avg*0.3) cls='ice';
+    if (i === latestSpecial) cls += ' spec';
+    table += `<tr class="${cls}"><td><strong>${i.toString().padStart(2,'0')}</strong></td>
+              <td>${freq[i]}</td><td>${rate}%</td><td><strong>${p}%</strong></td></tr>`;
+  }
+  table += `</table></div>`;
+  document.getElementById("result").innerHTML = table;
+
+  // 推薦組合（一樣用含特別號的權重）
+  const hot7 = [...Array(50).keys()].slice(1).sort((a,b)=>freq[b]-freq[a]).slice(0,7);
+  const cold7 = [...Array(50).keys()].slice(1).sort((a,b)=>freq[a]-freq[b]).slice(0,7);
+
+  let rec = `<h2>給你第 ${totalDraws+1} 期參考（7顆球全納入權重）</h2>`;
+  rec += `<div class="set"><strong>最熱7碼（易出正規+特別號）</strong><br>${hot7.join('　')}</div>`;
+  rec += `<div class="set"><strong>最冷7碼（超久沒出現）</strong><br>${cold7.join('　')}</div>`;
+  for (let i=1; i<=10; i++) {
+    const set = weightedRandom7(probNext);
+    rec += `<div class="set"><strong>加權隨機第${i}組</strong><br>${set.join('　')}</div>`;
+  }
+  document.getElementById("recommend").innerHTML = rec;
+}
+
+// 加權隨機抽7個（不放回）
+function weightedRandom7(weights) {
+  let pool = [];
+  for (let i=1; i<weights.length; i++) {
+    for (let j=0; j<weights[i]*15000; j++) pool.push(i);
+  }
+  const result = [];
+  while (result.length < 7 && pool.length > 0) {
+    const idx = Math.floor(Math.random() * pool.length);
+    const num = pool[idx];
+    if (!result.includes(num)) result.push(num);
+    pool.splice(idx, 1);
+  }
+  return result.sort((a,b)=>a-b);
+}
+</script>
+</body>
+</html>
